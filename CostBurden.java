@@ -1,8 +1,18 @@
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.NumberFormat;
+import java.util.Locale;
 import javax.swing.JFrame;
 import net.proteanit.sql.DbUtils;
+
+
+
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
 
 /**
  *
@@ -11,6 +21,7 @@ import net.proteanit.sql.DbUtils;
 public class CostBurden extends javax.swing.JFrame {
 
     SQLData sql;
+    boolean isXpanelOpen = false;
     
     /**
      * Creates new form CostBurden
@@ -27,7 +38,16 @@ public class CostBurden extends javax.swing.JFrame {
     private void setDefaultKey(){
         this.getRootPane().setDefaultButton(add);
     }
-
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //get 40hr rate and set text area
+    private void setTextAreaQoute(BigDecimal min){
+        //make string and set tereaxt
+        String qoute = "If you are earning or making over "  + min
+                + " per hour in a regular 40 hour work week, you are winning.  "
+                + "If you are not, then you are losing.";
+        dispayTextArea.setText(qoute);
+    }
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -57,15 +77,20 @@ public class CostBurden extends javax.swing.JFrame {
         displayDaily = new javax.swing.JLabel();
         hourly = new javax.swing.JLabel();
         displayHourly = new javax.swing.JLabel();
+        jScroll_TArea = new javax.swing.JScrollPane();
+        dispayTextArea = new javax.swing.JTextArea();
+        jSeparator2 = new javax.swing.JSeparator();
+        extPanel = new javax.swing.JPanel();
+        more = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        setTitle("Financial Burden");
+        setTitle("Financial Budget");
 
         expense.setText("Expense:");
 
         amount.setText("Amount:");
 
-        notes.setText("Notes");
+        notes.setText("Notes:");
 
         add.setText("Add");
         add.addActionListener(new java.awt.event.ActionListener() {
@@ -87,7 +112,10 @@ public class CostBurden extends javax.swing.JFrame {
         ));
         jScrollPane1.setViewportView(displayBudget);
 
+        total.setFont(new java.awt.Font("Dialog", 1, 14)); // NOI18N
         total.setText("Total:");
+
+        displayTotal.setFont(new java.awt.Font("Dialog", 1, 14)); // NOI18N
 
         yearly.setText("Yearly:");
 
@@ -96,6 +124,37 @@ public class CostBurden extends javax.swing.JFrame {
         daily.setText("Daily:");
 
         hourly.setText("Hourly:");
+
+        jScroll_TArea.setOpaque(false);
+
+        dispayTextArea.setBackground(new java.awt.Color(204, 204, 204));
+        dispayTextArea.setColumns(20);
+        dispayTextArea.setFont(new java.awt.Font("FreeMono", 0, 11)); // NOI18N
+        dispayTextArea.setLineWrap(true);
+        dispayTextArea.setRows(5);
+        dispayTextArea.setText("If you are earning or making over </..> per hour in a regular 40 hour work week, you are winning.  If you are not, then you are losing.\n");
+        dispayTextArea.setWrapStyleWord(true);
+        jScroll_TArea.setViewportView(dispayTextArea);
+
+        jSeparator2.setOrientation(javax.swing.SwingConstants.VERTICAL);
+
+        javax.swing.GroupLayout extPanelLayout = new javax.swing.GroupLayout(extPanel);
+        extPanel.setLayout(extPanelLayout);
+        extPanelLayout.setHorizontalGroup(
+            extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 346, Short.MAX_VALUE)
+        );
+        extPanelLayout.setVerticalGroup(
+            extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 0, Short.MAX_VALUE)
+        );
+
+        more.setText("...");
+        more.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                moreActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -106,86 +165,119 @@ public class CostBurden extends javax.swing.JFrame {
                     .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(layout.createSequentialGroup()
-                                .addGap(38, 38, 38)
-                                .addComponent(expense)
-                                .addGap(73, 73, 73)
-                                .addComponent(amount)
-                                .addGap(73, 73, 73)
-                                .addComponent(notes))
-                            .addGroup(layout.createSequentialGroup()
                                 .addContainerGap()
                                 .addComponent(expenseBox, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addGap(18, 18, 18)
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                                     .addComponent(add, javax.swing.GroupLayout.DEFAULT_SIZE, 100, Short.MAX_VALUE)
-                                    .addComponent(amountBox))
+                                    .addComponent(amountBox)))
+                            .addGroup(layout.createSequentialGroup()
+                                .addGap(38, 38, 38)
+                                .addComponent(expense)
+                                .addGap(63, 63, 63)
+                                .addComponent(amount)))
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(notes)
+                                .addGap(38, 38, 38))
+                            .addGroup(layout.createSequentialGroup()
                                 .addGap(18, 18, 18)
-                                .addComponent(notesBox, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addGap(0, 0, Short.MAX_VALUE))
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                        .addGap(0, 0, Short.MAX_VALUE)
+                                        .addComponent(more))
+                                    .addGroup(layout.createSequentialGroup()
+                                        .addComponent(notesBox, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addGap(0, 0, Short.MAX_VALUE))))))
                     .addGroup(layout.createSequentialGroup()
                         .addContainerGap()
-                        .addComponent(jSeparator1))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addGap(0, 13, Short.MAX_VALUE)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 345, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(yearly)
-                                    .addComponent(total)
-                                    .addComponent(weekly)
-                                    .addComponent(daily)
-                                    .addComponent(hourly))
+                            .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, 346, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(jScroll_TArea, javax.swing.GroupLayout.PREFERRED_SIZE, 174, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(layout.createSequentialGroup()
+                                        .addGap(25, 25, 25)
+                                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                            .addComponent(yearly)
+                                            .addComponent(total)))
+                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                        .addGap(28, 28, 28)
+                                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                            .addComponent(daily, javax.swing.GroupLayout.Alignment.TRAILING)
+                                            .addComponent(hourly, javax.swing.GroupLayout.Alignment.TRAILING)
+                                            .addComponent(weekly, javax.swing.GroupLayout.Alignment.TRAILING))))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                                     .addComponent(displayTotal, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                     .addComponent(displayYearly, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                     .addComponent(displayWeekly, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                     .addComponent(displayDaily, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(displayHourly, javax.swing.GroupLayout.DEFAULT_SIZE, 88, Short.MAX_VALUE))))))
+                                    .addComponent(displayHourly, javax.swing.GroupLayout.PREFERRED_SIZE, 88, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 345, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 12, Short.MAX_VALUE)
+                .addComponent(jSeparator2, javax.swing.GroupLayout.PREFERRED_SIZE, 17, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(extPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGap(22, 22, 22)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(expense)
-                    .addComponent(amount)
-                    .addComponent(notes))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(expenseBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(amountBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(notesBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(add, javax.swing.GroupLayout.PREFERRED_SIZE, 33, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, 11, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 231, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(total)
-                    .addComponent(displayTotal, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(yearly)
-                    .addComponent(displayYearly, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(weekly)
-                    .addComponent(displayWeekly, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(daily)
-                    .addComponent(displayDaily, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(hourly)
-                    .addComponent(displayHourly, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(22, 22, 22)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(expense)
+                            .addComponent(amount)
+                            .addComponent(notes))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(expenseBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(amountBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(notesBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(add, javax.swing.GroupLayout.PREFERRED_SIZE, 33, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(more))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, 11, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 231, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(total)
+                                    .addComponent(displayTotal, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(yearly)
+                                    .addComponent(displayYearly, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(displayWeekly, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(weekly))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(daily)
+                                    .addComponent(displayDaily, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(displayHourly, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(hourly))
+                                .addGap(0, 0, Short.MAX_VALUE))
+                            .addComponent(jScroll_TArea)))
+                    .addGroup(layout.createSequentialGroup()
+                        .addContainerGap()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jSeparator2)
+                            .addComponent(extPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
+                .addContainerGap())
         );
+
+        extPanel.setVisible(false);
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -205,26 +297,45 @@ public class CostBurden extends javax.swing.JFrame {
         getTotalBudget();
         expenseBox.requestFocus();
     }//GEN-LAST:event_addActionPerformed
+
+    private void moreActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moreActionPerformed
+        
+        if(isXpanelOpen){//it s already open
+            extPanel.setVisible(false);//make invisible
+             this.setSize(370, 521);//set to smaller size
+            isXpanelOpen = false;
+        }else{//panel must be closed
+            extPanel.setVisible(true);//make visible
+              this.setSize(740, 521);//set to larger size
+            isXpanelOpen = true;
+        }
+    }//GEN-LAST:event_moreActionPerformed
     /**
      *  get and set the total budget value
      *  is displayed on gui
      */
     private void getTotalBudget(){
         BigDecimal sum = sql.getSumTotal();
+        
         if(sum == null){//if sum is null
             displayTotal.setText("0.0");
         }else{//otherwise it is not null
-            displayTotal.setText(sum.toString());
+            //1st make sum a formatted US dollar
+            NumberFormat nf = NumberFormat.getCurrencyInstance(Locale.US);
+            displayTotal.setText(nf.format(sum));
             
             //do some math and display the other time frames
-          BigDecimal yearlyCost= sum.multiply(new BigDecimal("12"));//sum*12 months
+          BigDecimal yearlyCost = sum.multiply(new BigDecimal("12"));//sum*12 months
         displayYearly.setText(String.valueOf(yearlyCost));
-        BigDecimal weeklyCost= yearlyCost.divide(new BigDecimal("52"), 2, RoundingMode.HALF_UP);//yearly / 52 weeks
+        BigDecimal weeklyCost = yearlyCost.divide(new BigDecimal("52"), 2, RoundingMode.HALF_UP);//yearly / 52 weeks
         displayWeekly.setText(String.valueOf(weeklyCost));
         BigDecimal dailyCost = weeklyCost.divide(new BigDecimal("7"), 2 ,RoundingMode.HALF_UP);//weekly / 7
         displayDaily.setText(String.valueOf(dailyCost));
         BigDecimal hourlyCost = dailyCost.divide(new BigDecimal("24"), 2, RoundingMode.HALF_UP);//daily / 24
         displayHourly.setText(String.valueOf(hourlyCost));
+        
+        BigDecimal fortyHourW_W = weeklyCost.divide(new BigDecimal("40.0"), 2, RoundingMode.HALF_UP);
+        setTextAreaQoute(fortyHourW_W);
         }
     }
     /**
@@ -255,7 +366,6 @@ public class CostBurden extends javax.swing.JFrame {
             CostBurden burden = new CostBurden();
             burden.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             burden.setLocationRelativeTo(null);
-            burden.setResizable(false);
             burden.setVisible(true);
         });
     }
@@ -265,6 +375,7 @@ public class CostBurden extends javax.swing.JFrame {
     private javax.swing.JLabel amount;
     private javax.swing.JTextField amountBox;
     private javax.swing.JLabel daily;
+    private javax.swing.JTextArea dispayTextArea;
     private javax.swing.JTable displayBudget;
     private javax.swing.JLabel displayDaily;
     private javax.swing.JLabel displayHourly;
@@ -273,9 +384,13 @@ public class CostBurden extends javax.swing.JFrame {
     private javax.swing.JLabel displayYearly;
     private javax.swing.JLabel expense;
     private javax.swing.JTextField expenseBox;
+    private javax.swing.JPanel extPanel;
     private javax.swing.JLabel hourly;
     private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JScrollPane jScroll_TArea;
     private javax.swing.JSeparator jSeparator1;
+    private javax.swing.JSeparator jSeparator2;
+    private javax.swing.JButton more;
     private javax.swing.JLabel notes;
     private javax.swing.JTextField notesBox;
     private javax.swing.JLabel total;
