@@ -43,6 +43,7 @@ public class CostBurden extends javax.swing.JFrame {
     public static ArrayList<String> volume = new ArrayList<>();
     public static ArrayList<String>  openInterest = new ArrayList<>();
     public static ArrayList<String> volatility= new ArrayList<>();
+    public static ArrayList<String> time= new ArrayList<>();
     
     /**
      * Creates new form CostBurden
@@ -57,11 +58,6 @@ public class CostBurden extends javax.swing.JFrame {
         setTimeBar();
         setDateLabel();
         loadAccounts();
-        /*
-        * builds arraylist with list of oppotunities pulled from barchart.com
-        * and then breaks down that list into symbol,type, expiration, strike and so on
-        */
-        setArrayCols();
        setOpportunities();//sets the jlabel to the number of opptunities in the arraylist
        buildTabs();
     }
@@ -93,7 +89,7 @@ public class CostBurden extends javax.swing.JFrame {
      *  the highest implied volatilities. 
      * @return arraylist of the data from barchart
      */
-    public static ArrayList getOpportunities(){
+    private static ArrayList getOpportunities(){
         String nextLine;
          ArrayList<String> list = new ArrayList<>();
          try{            
@@ -123,12 +119,11 @@ public class CostBurden extends javax.swing.JFrame {
     /**
      *  Breaks the original arraylist down into smaller arrays of the corresponding columns.
      */
-    public final void setArrayCols(){
+    public  static void setArrayCols(){
         qoutes = getOpportunities();
         returns = new ArrayList<>();
         
     for(int i=0;i<qoutes.size()-1;i++){
-        
         String[] parts = qoutes.get(i).split(",(?=([^\\\"]*\\\"[^\\\"]*\\\")*[^\\\"]*$)"); 
 
         symbol.add(parts[0]);
@@ -149,14 +144,20 @@ public class CostBurden extends javax.swing.JFrame {
         volume.add(parts[7]);
         openInterest.add(parts[8]);
         volatility.add(parts[9]);
+        time.add(parts[10]);
         }
     
+    //compute and then add the roi into the returns array for every i
         for(int i=0;i<qoutes.size()-1;i++){
-            //compute and then add the roi into the returns array for every i
             BigDecimal x = new BigDecimal(strike.get(i));
             
-            BigDecimal qoutient = new BigDecimal(last.get(i)).multiply(new BigDecimal("100")).divide(x, 2, RoundingMode.HALF_UP);
-            returns.add(qoutient.toString());
+        if(type.get(i).equalsIgnoreCase("Put")){
+            BigDecimal p = new BigDecimal(last.get(i));
+            BigDecimal q = p.multiply(new BigDecimal("100")).divide(x, 2, RoundingMode.HALF_UP);
+          returns.add(q.toString());
+        }else{//must be a call
+           returns.add("I am a call");
+           }
         }
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -170,6 +171,7 @@ public class CostBurden extends javax.swing.JFrame {
      *  Sets the jlabel that displays how many rows are in the array
      */ 
     private void setOpportunities(){
+        setArrayCols();
         displayNumOfOpps.setText(String.valueOf(symbol.size()));
     }     
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -373,7 +375,6 @@ public class CostBurden extends javax.swing.JFrame {
         oppsToday = new javax.swing.JLabel();
         displayNumOfOpps = new javax.swing.JLabel();
         savingsBar = new javax.swing.JProgressBar();
-        jPanel2 = new javax.swing.JPanel();
         more = new javax.swing.JButton();
         removeAccount = new javax.swing.JButton();
 
@@ -388,8 +389,7 @@ public class CostBurden extends javax.swing.JFrame {
             .addGap(0, 300, Short.MAX_VALUE)
         );
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        setTitle("Receipt Challenge");
+        setTitle("tetraPRO( ) Income_Solution");
 
         expense.setText("Expense:");
 
@@ -539,19 +539,6 @@ public class CostBurden extends javax.swing.JFrame {
         );
 
         jTabbedPane1.addTab("Savings", jPanel1);
-
-        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
-        jPanel2.setLayout(jPanel2Layout);
-        jPanel2Layout.setHorizontalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 336, Short.MAX_VALUE)
-        );
-        jPanel2Layout.setVerticalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 313, Short.MAX_VALUE)
-        );
-
-        jTabbedPane1.addTab("Broker", jPanel2);
 
         javax.swing.GroupLayout extPanelLayout = new javax.swing.GroupLayout(extPanel);
         extPanel.setLayout(extPanelLayout);
@@ -936,7 +923,6 @@ public class CostBurden extends javax.swing.JFrame {
     private javax.swing.JFrame jFrame1;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel2;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScroll_TArea;
     private javax.swing.JSeparator jSeparator1;
