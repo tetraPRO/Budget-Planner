@@ -7,6 +7,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import javax.swing.JOptionPane;
 
 /*
@@ -130,6 +131,70 @@ public class SQLData {
         }catch(SQLException ex){
             JOptionPane.showMessageDialog(null, ex);
         }return sum;
+    }
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    /**
+     *  Returns the list of accounts that the user set in the budget
+     * @return 
+     */
+    public ArrayList getAccounts(){
+        ArrayList<String> accounts = new ArrayList<>();
+        try{
+            stmt = conn.createStatement();
+            String sql = "SELECT EXPENSE FROM BUDGET";
+            rs = stmt.executeQuery(sql);
+            while(rs.next()){
+                accounts.add(rs.getString("Expense"));
+            }
+        }catch(SQLException ex){
+            JOptionPane.showMessageDialog(null, ex);
+        }finally{
+            try{
+                stmt.close();
+                rs.close();
+            }catch(SQLException ex){
+            JOptionPane.showMessageDialog(null, ex);
+        }
+        }return accounts;
+    }
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    public BigDecimal getAmountOfBudget(String account){
+       BigDecimal amount = null;
+        try{
+            stmt = conn.createStatement();
+            String sql = "SELECT AMOUNT FROM BUDGET WHERE EXPENSE = \'" + account + "\'";
+            rs = stmt.executeQuery(sql);
+            while(rs.next()){
+                amount = rs.getBigDecimal("Amount");
+            }
+        }catch(SQLException ex){
+            JOptionPane.showMessageDialog(null, ex);
+        }finally{
+            try{
+                stmt.close();
+                rs.close();
+                }catch(SQLException ex){
+                JOptionPane.showMessageDialog(null, ex);
+            }
+        }return amount;
+    }
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    public void deleteExpense(String account){
+        try{
+            stmt = conn.createStatement();
+            String sql = "DELETE  FROM BUDGET WHERE EXPENSE = \'" + account + "\'";
+            stmt.executeUpdate(sql);
+        }catch(SQLException ex){
+            JOptionPane.showMessageDialog(null, ex);
+        }finally{
+            try{
+                stmt.close();
+            }catch(SQLException ex){
+            JOptionPane.showMessageDialog(null, ex);
+        }
+        }
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 }
