@@ -1,5 +1,4 @@
 
-import java.awt.event.ItemEvent;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
@@ -14,52 +13,39 @@ import java.util.Locale;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JTabbedPane;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import net.proteanit.sql.DbUtils;
 
 /**
- *
- * @author capphil1
+ * @author Philip Matthew Caputo
  */
-public class CostBurden extends javax.swing.JFrame {
+public class IncomeSolution extends javax.swing.JFrame {
 
     SQLData sql;
+    StockFutureData data;
     boolean isXpanelOpen = false;
     boolean isFirstPage = false;
     boolean isTotalReqOn = false;
    JPanel[] expensePanels = null;
-   private static ArrayList<String> accounts = null;
-   public static ArrayList<String> returns = null;
-   public static ArrayList<String> qoutes  = null;
-   public static ArrayList<String> symbol = new ArrayList<>();
-    public static ArrayList<String>  type = new ArrayList<>();
-    public static ArrayList<String> strike = new ArrayList<>();
-    public static ArrayList<String> expiration = new ArrayList<>();
-    public static ArrayList<String> bid = new ArrayList<>();
-    public static ArrayList<String> ask = new ArrayList<>();
-    public static ArrayList<String> last = new ArrayList<>();
-    public static ArrayList<String> volume = new ArrayList<>();
-    public static ArrayList<String>  openInterest = new ArrayList<>();
-    public static ArrayList<String> volatility= new ArrayList<>();
-    public static ArrayList<String> time= new ArrayList<>();
+   BigDecimal sum = null;
+   String x;
+
     
     /**
-     * Creates new form CostBurden
+     * Creates new form IncomeSolution
      */
-    public CostBurden() {
+    public IncomeSolution() {
         initComponents();
         sql = new SQLData("root", "admin");
+        data = new StockFutureData();
         sql.onStartUp();
         displayBudget.setModel(DbUtils.resultSetToTableModel(sql.updateTable("Budget")));
         setDefaultKey();
         getTotalBudget();
         setTimeBar();
         setDateLabel();
-        loadAccounts();
        setOpportunities();//sets the jlabel to the number of opptunities in the arraylist
-       buildTabs();
+       setSymbols();
+       setExpirationDates();
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     /**
@@ -72,7 +58,7 @@ public class CostBurden extends javax.swing.JFrame {
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     /**
-     * Sets the quote with the min embedded into the 
+     * Sets the quote with the minimum embedded into the 
      * string.
      * @param min Number of dollars must earn in 40 hr/wk
      */
@@ -83,97 +69,79 @@ public class CostBurden extends javax.swing.JFrame {
                 + "If you are not, then you are losing.";
         dispayTextArea.setText(qoute);
     }
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    /**
-     *  Build a url link to a barchart excel file with a list of the options with
-     *  the highest implied volatilities. 
-     * @return arraylist of the data from barchart
-     */
-    private static ArrayList getOpportunities(){
-        String nextLine;
-         ArrayList<String> list = new ArrayList<>();
-         try{            
-             String qoute = "http://www.barchart.com/option-center/getExcel.php?type=stocks&page=Highest%20Implied%"
-                     + "20Volatility&dir=desc&sort=volatility&filter_conditions=a%3A3%3A%7Bi%3A0%3Ba%3A3%3A%7Bi%"
-                     + "3A0%3Bs%3A10%3A%22volatility%22%3Bi%3A1%3Bs%3A1%3A%22%3E%22%3Bi%3A2%3Bs%3A1%"
-                     + "3A%220%22%3B%7Di%3A1%3Ba%3A3%3A%7Bi%3A0%3Bs%3A6%3A%22volume%22%3Bi%3A1%3Bs%"
-                     + "3A1%3A%22%3E%22%3Bi%3A2%3Bs%3A3%3A%22500%22%3B%7Di%3A2%3Ba%3A3%3A%7Bi%3A0%"
-                     + "3Bs%3A13%3A%22open_interest%22%3Bi%3A1%3Bs%3A1%3A%22%3E%22%3Bi%3A2%3Bs%3A3%3A%"
-                     + "22100%22%3B%7D%7D&f=base_symbol,type,strike,expiration_date,bid,ask,last,volume,open_interest,volatility,"
-                     + "timestamp&fn=Symbol,Type,Strike,Expiration,Bid,Ask,Last,Volume,Open%20Interest,Volatility,Time";
-             URL url = new URL(qoute);
-             URLConnection connect = url.openConnection();
-             InputStreamReader inStream = new InputStreamReader(connect.getInputStream());
-             BufferedReader buffer = new BufferedReader(inStream);
-            
-             while(buffer.readLine() != null){
-                 nextLine = buffer.readLine();
-                     //do something here with data
-                     list.add(nextLine);
-                 }
-         }catch(Exception ex){
-             JOptionPane.showMessageDialog(null, ex);
-         }return list;
-    }
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    /**
-     *  Breaks the original arraylist down into smaller arrays of the corresponding columns.
-     */
-    public  static void setArrayCols(){
-        qoutes = getOpportunities();
-        returns = new ArrayList<>();
-        
-    for(int i=0;i<qoutes.size()-1;i++){
-        String[] parts = qoutes.get(i).split(",(?=([^\\\"]*\\\"[^\\\"]*\\\")*[^\\\"]*$)"); 
-
-        symbol.add(parts[0]);
-        type.add(parts[1]);
-
-         BigDecimal part;
-        if(parts[2].startsWith("\"")){
-            part = new BigDecimal("888");
-        }else{
-            part = new BigDecimal(parts[2]);
-        }
-
-        strike.add(part.toString());
-        expiration.add(parts[3]);
-        bid.add(parts[4]);
-        ask.add(parts[5]);
-        last.add(parts[6]);
-        volume.add(parts[7]);
-        openInterest.add(parts[8]);
-        volatility.add(parts[9]);
-        time.add(parts[10]);
-        }
     
-    //compute and then add the roi into the returns array for every i
-        for(int i=0;i<qoutes.size()-1;i++){
-            BigDecimal x = new BigDecimal(strike.get(i));
-            
-        if(type.get(i).equalsIgnoreCase("Put")){
-            BigDecimal p = new BigDecimal(last.get(i));
-            BigDecimal q = p.multiply(new BigDecimal("100")).divide(x, 2, RoundingMode.HALF_UP);
-          returns.add(q.toString());
-        }else{//must be a call
-           returns.add("I am a call");
-           }
-        }
-    }
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //~~~~~~~~~~~~~~~~~~~~`~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     
-    //private String[] getDesiredOrder(String[] unOrdered){
-        //reorder the qoutes array with the highest return at the top
-       // String[] ordered = {};
-    //}
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     /** 
      *  Sets the jlabel that displays how many rows are in the array
      */ 
     private void setOpportunities(){
-        setArrayCols();
-        displayNumOfOpps.setText(String.valueOf(symbol.size()));
+        displayNumOfOpps.setText(String.valueOf(data.symbol.size()));
     }     
+    
+      //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    /**
+     * Returns a string of the correct formatted price of the stock.
+     *  If there is no price data null will be returned
+     * @param symbol 3 or 4 characters symbol of the stock
+     * @return string
+     */
+    private String getStockPrice(String symbol){
+        try{
+             String qoute = "http://chart.finance.yahoo.com/table.csv?s="
+                     + symbol
+                     + "&a=" + getDate(2)//previous month
+                     + "&b=" + (getDate(5) - 3)//previous day
+                     + "&c=" + getDate(1)//previous year
+                     + "&d=" + getDate(2)//this month
+                     + "&e=" + getDate(5)//this day
+                     + "&f=" + getDate(1)//this year
+                     + "&g=d"//daily
+                     + "&ignore=.csv";
+             URL url = new URL(qoute);
+             URLConnection connect = url.openConnection();
+             InputStreamReader inStream = new InputStreamReader(connect.getInputStream());
+             BufferedReader buffer = new BufferedReader(inStream);
+            
+             if(buffer.readLine() != null){
+                 String[] parts = buffer.readLine().split(",");
+                     //do something here with data
+                     return getCurrencyDisplay(new BigDecimal(parts[4]));
+                 }
+         }catch(Exception ex){
+             JOptionPane.showMessageDialog(null, ex);
+         }return null;
+    }
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    
+  
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    /**
+     * Returns a string value of the out of the moneyness as a percentage.
+     * @param type string of the type either call or put
+     * @param i what number of the array to get
+     * @return string of correct value
+     */
+    private String getOTMness(String type, int i){
+        String formattedPrice = displayPrice.getText();
+        String p = formattedPrice.substring(1, 5);
+         BigDecimal price = new BigDecimal(p);
+        BigDecimal strikePrice = new BigDecimal(data.strike.get(i));
+        String otm = null;
+                if(type.equalsIgnoreCase("Put")){
+                   //price - strike = + if OTM
+                   otm = price.subtract(strikePrice).divide(price,1,RoundingMode.HALF_UP)
+                           .multiply(new BigDecimal("100")).toString();
+                   return otm;
+                }else{//must be a call
+                    //strike - price = + if OTM
+                    otm = strikePrice.subtract(price).divide(price,1,RoundingMode.HALF_UP)
+                            .multiply(new BigDecimal("100")).toString();
+                    return otm;
+                }
+    }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     /**
      * Builds an instance of the gregorian calendar and then
@@ -260,22 +228,11 @@ public class CostBurden extends javax.swing.JFrame {
     }
    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     /**
-     *  Load budget accounts into combo box
-     */
-    private void loadAccounts(){
-        expenseList.removeAllItems();
-        accounts = sql.getAccounts();
-        for(int i =0; i<accounts.size();i++){
-            expenseList.addItem(accounts.get(i));
-        }
-    }
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    /**
      * Takes bigdecimal amount in and formats it to a currency display
      * @param amount bigdecimal 
      * @return string formated as a currency
      */
-    public static String getCurrencyDisplay(BigDecimal amount){
+    public String getCurrencyDisplay(BigDecimal amount){
         NumberFormat nf = NumberFormat.getCurrencyInstance(Locale.US);
         return nf.format(amount);
     }
@@ -287,40 +244,52 @@ public class CostBurden extends javax.swing.JFrame {
     private void setFrameSize(){
         if(isXpanelOpen){//it s already open
             extPanel.setVisible(false);//make invisible
-             this.setSize(370, 505);//set to smaller size
+             this.setSize(370, 508);//set to smaller size
             isXpanelOpen = false;//close panel
         }else{//panel must be closed
             extPanel.setVisible(true);//make visible
-              this.setSize(725, 505);//set to larger size
+              this.setSize(725, 508);//set to larger size
             isXpanelOpen = true;//open panel
         }
     }
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     /**
-     * Create a tabbed pane for every account in the budget.
-     * To be used when the add button is clicked to add a new 
-     * expense to the budget.
+     * Adds the symbols to the combo box.
      */
-    private void createTabs(String account){
-        JPanel nextTab = new TabbedPanel();
-        jTabbedPane1.addTab(account, nextTab);
+    private void setSymbols(){
+        
+        contractExpiry.setVisible(true);
+             for(int i=0;i<data.name_F.size()-1;i++){
+            contractBox.addItem(data.name_F.get(i)); 
+             }
+        //if()){
+            
+            
+        //}else{//must be stock
+             // for(int i=0;i<data.symbolOnceOnly.size()-1;i++){
+            //contractBox.addItem(data.symbolOnceOnly.get(i));
+            //}
+        //}
+    }
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    
+    private void setExpirationDates(){
+        contractExpiry.removeAllItems();
+        String name = contractBox.getSelectedItem().toString();
+        String sym = data.getCommoditySymbol(name);
+         ArrayList<String> expiries = data.getAvailableOptionExpirations(sym);
+        for(int i=0;i<expiries.size();i++){
+            contractExpiry.addItem(expiries.get(i));
+        }
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    /**
-     *  Build a tab for every expense in the budget 
-     *  to be called upon 1st creation
-     */
-    private void buildTabs(){
-        //get list of expenses
-        //create a tabedPane for each and initialize
-        int i = 0;
-        accounts = sql.getAccounts();
-        while(i < accounts.size()){
-            expensePanels = new JPanel[accounts.size()];
-            expensePanels[i] = new TabbedPanel();
-            jTabbedPane1.addTab( accounts.get(i), expensePanels[i]);
-            i++;
-        }
+    
+    private void setExpireCode(String expire){
+        x = expire.substring(expire.length()-5, expire.length());
+    }
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    private void setPrintOut(String printOut){
+        System.out.println(printOut);
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     /**
@@ -329,7 +298,7 @@ public class CostBurden extends javax.swing.JFrame {
      * regenerated by the Form Editor.
      */
     @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">                          
     private void initComponents() {
 
         jFrame1 = new javax.swing.JFrame();
@@ -359,22 +328,21 @@ public class CostBurden extends javax.swing.JFrame {
         extPanel = new javax.swing.JPanel();
         timeScale = new javax.swing.JProgressBar();
         date = new javax.swing.JLabel();
-        expenseList = new javax.swing.JComboBox<>();
-        jLabel1 = new javax.swing.JLabel();
-        budget = new javax.swing.JLabel();
-        displayBudgetAmount = new javax.swing.JLabel();
-        needWorking = new javax.swing.JProgressBar();
-        jTabbedPane1 = new javax.swing.JTabbedPane();
-        jPanel1 = new javax.swing.JPanel();
-        savingsBox = new javax.swing.JTextField();
-        savings = new javax.swing.JLabel();
-        enter = new javax.swing.JButton();
-        totalRequired = new javax.swing.JToggleButton();
-        toBeFree = new javax.swing.JLabel();
+        tradingCapital = new javax.swing.JProgressBar();
         putOption = new javax.swing.JButton();
-        oppsToday = new javax.swing.JLabel();
         displayNumOfOpps = new javax.swing.JLabel();
-        savingsBar = new javax.swing.JProgressBar();
+        incomeBar = new javax.swing.JProgressBar();
+        toBeFree = new javax.swing.JLabel();
+        totalRequired = new javax.swing.JToggleButton();
+        contractBox = new javax.swing.JComboBox<>();
+        displayPrice = new javax.swing.JLabel();
+        jScrollPane2 = new javax.swing.JScrollPane();
+        listBox = new javax.swing.JList<>();
+        refresh = new javax.swing.JButton();
+        contractExpiry = new javax.swing.JComboBox<>();
+        displayContractSpecs = new javax.swing.JButton();
+        callOption = new javax.swing.JButton();
+        displayNumDays = new javax.swing.JLabel();
         more = new javax.swing.JButton();
         removeAccount = new javax.swing.JButton();
 
@@ -447,35 +415,8 @@ public class CostBurden extends javax.swing.JFrame {
 
         date.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
 
-        jLabel1.setText("Select an account:");
-
-        budget.setText("Budget:");
-
-        displayBudgetAmount.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-
-        needWorking.setToolTipText("Percent of Total Required Capital to be FREE of the Rat Race!");
-        needWorking.setStringPainted(true);
-
-        jTabbedPane1.setTabPlacement(javax.swing.JTabbedPane.BOTTOM);
-
-        savings.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        savings.setText("Savings:");
-
-        enter.setText("Enter");
-        enter.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                enterActionPerformed(evt);
-            }
-        });
-
-        totalRequired.setText("Total Required");
-        totalRequired.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                totalRequiredActionPerformed(evt);
-            }
-        });
-
-        toBeFree.setText("To Be Free!");
+        tradingCapital.setToolTipText("Percent of Capital Needed");
+        tradingCapital.setStringPainted(true);
 
         putOption.setText("Put Option");
         putOption.addActionListener(new java.awt.event.ActionListener() {
@@ -484,81 +425,102 @@ public class CostBurden extends javax.swing.JFrame {
             }
         });
 
-        oppsToday.setText("Opportunities Today:");
+        displayNumOfOpps.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
 
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
-                        .addComponent(savings, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                                .addComponent(putOption)
-                                .addGap(46, 46, 46)
-                                .addComponent(oppsToday)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(displayNumOfOpps, javax.swing.GroupLayout.PREFERRED_SIZE, 48, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addComponent(savingsBar, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                                .addComponent(toBeFree, javax.swing.GroupLayout.PREFERRED_SIZE, 222, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(savingsBox, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addComponent(totalRequired, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(enter, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)))))
-                .addContainerGap())
-        );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(putOption)
-                    .addComponent(oppsToday)
-                    .addComponent(displayNumOfOpps, javax.swing.GroupLayout.PREFERRED_SIZE, 24, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(savingsBar, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 148, Short.MAX_VALUE)
-                .addComponent(savings)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(savingsBox, javax.swing.GroupLayout.PREFERRED_SIZE, 24, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(toBeFree, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(totalRequired)
-                    .addComponent(enter))
-                .addContainerGap())
-        );
+        incomeBar.setToolTipText("Percent of Yearly Income");
+        incomeBar.setStringPainted(true);
 
-        jTabbedPane1.addTab("Savings", jPanel1);
+        toBeFree.setText("To Be Free!");
+
+        totalRequired.setText("Total Required");
+        totalRequired.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                totalRequiredActionPerformed(evt);
+            }
+        });
+
+        contractBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                contractBoxActionPerformed(evt);
+            }
+        });
+
+        displayPrice.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+
+        listBox.setBackground(new java.awt.Color(204, 204, 204));
+        jScrollPane2.setViewportView(listBox);
+
+        refresh.setText("Refresh");
+        refresh.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                refreshActionPerformed(evt);
+            }
+        });
+
+        contractExpiry.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                contractExpiryActionPerformed(evt);
+            }
+        });
+
+        displayContractSpecs.setText("+");
+        displayContractSpecs.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                displayContractSpecsActionPerformed(evt);
+            }
+        });
+
+        callOption.setText("Call Option");
+        callOption.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                callOptionActionPerformed(evt);
+            }
+        });
+
+        displayNumDays.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
 
         javax.swing.GroupLayout extPanelLayout = new javax.swing.GroupLayout(extPanel);
         extPanel.setLayout(extPanelLayout);
         extPanelLayout.setHorizontalGroup(
             extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(timeScale, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-            .addComponent(needWorking, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-            .addComponent(jTabbedPane1)
             .addGroup(extPanelLayout.createSequentialGroup()
-                .addComponent(jLabel1)
-                .addGap(11, 11, 11)
                 .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(date, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                        .addGroup(extPanelLayout.createSequentialGroup()
+                            .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                .addComponent(totalRequired, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGroup(extPanelLayout.createSequentialGroup()
+                                    .addContainerGap()
+                                    .addComponent(toBeFree, javax.swing.GroupLayout.PREFERRED_SIZE, 222, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(refresh))
+                        .addComponent(timeScale, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 341, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(tradingCapital, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 341, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(javax.swing.GroupLayout.Alignment.LEADING, extPanelLayout.createSequentialGroup()
+                            .addGap(122, 122, 122)
+                            .addComponent(date, javax.swing.GroupLayout.PREFERRED_SIZE, 105, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(incomeBar, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 341, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(javax.swing.GroupLayout.Alignment.LEADING, extPanelLayout.createSequentialGroup()
+                            .addComponent(putOption)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addComponent(displayNumOfOpps, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                            .addComponent(callOption)))
                     .addGroup(extPanelLayout.createSequentialGroup()
-                        .addComponent(expenseList, javax.swing.GroupLayout.PREFERRED_SIZE, 87, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(budget)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(displayBudgetAmount, javax.swing.GroupLayout.PREFERRED_SIZE, 53, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addGap(1, 1, 1)
+                        .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 347, Short.MAX_VALUE)
+                            .addGroup(extPanelLayout.createSequentialGroup()
+                                .addComponent(displayContractSpecs)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(contractBox, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(displayPrice, javax.swing.GroupLayout.PREFERRED_SIZE, 112, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                    .addComponent(contractExpiry, 0, 153, Short.MAX_VALUE)
+                                    .addComponent(displayNumDays, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))))
+                .addGap(0, 0, Short.MAX_VALUE))
         );
         extPanelLayout.setVerticalGroup(
             extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -568,45 +530,34 @@ public class CostBurden extends javax.swing.JFrame {
                 .addComponent(date, javax.swing.GroupLayout.PREFERRED_SIZE, 15, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(displayBudgetAmount, javax.swing.GroupLayout.PREFERRED_SIZE, 23, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(expenseList, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(jLabel1)
-                        .addComponent(budget, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(extPanelLayout.createSequentialGroup()
+                        .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(putOption)
+                            .addComponent(callOption, javax.swing.GroupLayout.Alignment.TRAILING))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(incomeBar, javax.swing.GroupLayout.PREFERRED_SIZE, 32, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(contractBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(contractExpiry, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(displayContractSpecs)))
+                    .addComponent(displayNumOfOpps, javax.swing.GroupLayout.PREFERRED_SIZE, 24, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(displayPrice, javax.swing.GroupLayout.DEFAULT_SIZE, 17, Short.MAX_VALUE)
+                    .addComponent(displayNumDays, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jTabbedPane1)
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 198, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(needWorking, javax.swing.GroupLayout.PREFERRED_SIZE, 33, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(toBeFree, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(totalRequired)
+                    .addComponent(refresh))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(tradingCapital, javax.swing.GroupLayout.PREFERRED_SIZE, 33, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
-
-        expenseList.addItemListener((ItemEvent ie) -> {
-            //add amount to displayBudgetAmount...
-            if(ie.getStateChange()   == ItemEvent.SELECTED){
-                BigDecimal amountOfBudget = sql.getAmountOfBudget(expenseList.getSelectedItem().toString());
-                displayBudgetAmount.setText(amountOfBudget.toString());
-
-                //need to fix tab method...so the correect tab shows up...
-            }
-        });
-        jTabbedPane1.addChangeListener(new ChangeListener(){
-            public void stateChanged(ChangeEvent ce){
-                JTabbedPane sourceOfPane = (JTabbedPane) ce.getSource();
-                int index = sourceOfPane.getSelectedIndex();
-                String expense = sourceOfPane.getTitleAt(index);
-                if(expense.equals("Savings")){
-
-                }else{
-                    BigDecimal budgetAmount = sql.getAmountOfBudget(expense);
-                    BigDecimal quoteint = budgetAmount.divide(new BigDecimal(".05"), 2, RoundingMode.HALF_UP);
-
-                    //TabbedPanel.requiredCapital_0.setText(getCurrencyDisplay(quoteint));
-
-                    expenseList.setSelectedItem(expense);
-                }
-
-            }
-        });
 
         more.setText("...");
         more.addActionListener(new java.awt.event.ActionListener() {
@@ -656,13 +607,14 @@ public class CostBurden extends javax.swing.JFrame {
                         .addComponent(jSeparator1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 346, Short.MAX_VALUE))
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(jScroll_TArea, javax.swing.GroupLayout.PREFERRED_SIZE, 177, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(22, 22, 22)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(layout.createSequentialGroup()
+                                .addGap(22, 22, 22)
                                 .addComponent(total)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(displayTotal, javax.swing.GroupLayout.PREFERRED_SIZE, 88, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(layout.createSequentialGroup()
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                                     .addComponent(yearly)
                                     .addComponent(weekly)
@@ -713,7 +665,7 @@ public class CostBurden extends javax.swing.JFrame {
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(displayTotal, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(total, javax.swing.GroupLayout.Alignment.TRAILING))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(yearly)
                                     .addComponent(displayYearly, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE))
@@ -729,16 +681,16 @@ public class CostBurden extends javax.swing.JFrame {
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                     .addComponent(displayHourly, javax.swing.GroupLayout.PREFERRED_SIZE, 14, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(hourly)))
-                            .addComponent(jScroll_TArea))))
+                            .addComponent(jScroll_TArea, javax.swing.GroupLayout.PREFERRED_SIZE, 114, javax.swing.GroupLayout.PREFERRED_SIZE))))
                 .addContainerGap())
         );
 
         extPanel.setVisible(false);
 
         pack();
-    }// </editor-fold>//GEN-END:initComponents
+    }// </editor-fold>                        
 
-    private void addActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addActionPerformed
+    private void addActionPerformed(java.awt.event.ActionEvent evt) {                                    
         String bill = expenseBox.getText();
         BigDecimal cost = new BigDecimal(amountBox.getText());
         String details = notesBox.getText();
@@ -753,10 +705,7 @@ public class CostBurden extends javax.swing.JFrame {
         getTotalBudget();
         expenseBox.requestFocus();
         
-        loadAccounts();//load new account into combo box
-        //create a tabbedpane for each account of budget.
-       createTabs(bill);
-    }//GEN-LAST:event_addActionPerformed
+    }                                   
     /**
      * This little button expands the jframe by adding adding another
      * jpanel to the right hand side.  The panel is in fact already created 
@@ -764,44 +713,31 @@ public class CostBurden extends javax.swing.JFrame {
      * boolean isXpanelOpen accordingly.
      * @param evt the click on the little button {...}
      */
-    private void moreActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_moreActionPerformed
+    private void moreActionPerformed(java.awt.event.ActionEvent evt) {                                     
         setFrameSize();
-    }//GEN-LAST:event_moreActionPerformed
+    }                                    
 
-    private void totalRequiredActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_totalRequiredActionPerformed
-       String message = "This is the amount that you need to be able to stop working if " 
-               + " it is used to sell options as a sercurity business..";
-        JOptionPane.showMessageDialog(this, message, "Very Important Number!", JOptionPane.INFORMATION_MESSAGE);
+    private void totalRequiredActionPerformed(java.awt.event.ActionEvent evt) {                                              
+       String message = "This is the amount that you need to be able to stop working if \n" 
+               + " it is used to sell options as a security insurance business.";
         
         if(isTotalReqOn){
             totalRequired.setText("Total Required");
             toBeFree.setText("To Be Free!");
             isTotalReqOn = false;
         }else{
-            BigDecimal sum= sql.getSumTotal();
+            JOptionPane.showMessageDialog(this, message, "Very Important Number!", JOptionPane.INFORMATION_MESSAGE);
             BigDecimal quoteint = sum.divide(new  BigDecimal(".05"), 2, RoundingMode.HALF_UP);
             totalRequired.setText(getCurrencyDisplay(quoteint));
             toBeFree.setText("@ 5% / Month w/ Premium Income!");
             isTotalReqOn = true;
-        }
-        int n = 100;
-        needWorking.setValue(n);//sets the progress bar to 100% full.  Then as we apply
-        //the funds to our positions, we will be able to see how much income we can generate.
-    }//GEN-LAST:event_totalRequiredActionPerformed
-
-    private void enterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_enterActionPerformed
-        BigDecimal quoteint = sql.getSumTotal().divide(new  BigDecimal(".05"), 2, RoundingMode.HALF_UP);
-        BigDecimal diff = quoteint.subtract(new BigDecimal(savingsBox.getText()));
-        BigDecimal percent = BigDecimal.ONE.subtract(diff.divide(quoteint, 2, RoundingMode.HALF_UP));
-        BigDecimal timesHundred = percent.multiply(new BigDecimal("100"));
-        needWorking.setValue(timesHundred.intValue());
-        savingsBox.setText("");
-    }//GEN-LAST:event_enterActionPerformed
+        }   
+    }                                             
     /**
      *  Deletes selected records from table
      * @param evt 
      */
-    private void removeAccountActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_removeAccountActionPerformed
+    private void removeAccountActionPerformed(java.awt.event.ActionEvent evt) {                                              
         JPanel deletePanel = new DeleteRecord();
         String[] buttons = {"Cancel", "Delete"};
          int n = JOptionPane.showOptionDialog(this,  deletePanel,"Delete Record" , 
@@ -812,12 +748,7 @@ public class CostBurden extends javax.swing.JFrame {
                 JOptionPane.getRootFrame().dispose();
                 break;
             case JOptionPane.NO_OPTION://Delete
-                accounts = sql.getAccounts();
-                for(int i=0;i<accounts.size();i++){
-                    if(accounts.get(i).equals(accountToRemove)){
-                        jTabbedPane1.removeTabAt(i+1);//tabs starts count at 0
-                    }
-                }
+                data.accounts = sql.getAccounts();
                 sql.deleteExpense(accountToRemove);
                 break;
             case JOptionPane.CLOSED_OPTION://x up in the right corner
@@ -829,24 +760,79 @@ public class CostBurden extends javax.swing.JFrame {
         }
          displayBudget.setModel(DbUtils.resultSetToTableModel(sql.updateTable("Budget")));
          getTotalBudget(); 
-    }//GEN-LAST:event_removeAccountActionPerformed
+    }                                             
 
-    private void putOptionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_putOptionActionPerformed
+    private void putOptionActionPerformed(java.awt.event.ActionEvent evt) {                                          
          String qoute = "A put option is a contract.  It is a term sercurity  insurance policy. \n" + 
                 "It has a expiration date, coverage amount, deductible, and premium cost! \n" + 
-                "When you sell these, you can generate all of the income for your monthly\n" + 
-                 " expenses without working 40 hours every week of your life!";
+                "One could use these instruments as a strategy to get into a position.  Theroetically\n" + 
+                 " one could get paid to enter a position if one collected enough premium!";
         JOptionPane.showMessageDialog(this, qoute, "What is a Put Option?", JOptionPane.INFORMATION_MESSAGE);
-    }//GEN-LAST:event_putOptionActionPerformed
+    }                                         
+
+    private void contractBoxActionPerformed(java.awt.event.ActionEvent evt) {                                            
+        incomeBar.setValue(0);
+        tradingCapital.setValue(0);
+        setExpirationDates();
+        
+        String expire = contractExpiry.getSelectedItem().toString();
+        String sym = expire.substring(expire.length()-5, expire.length()-3);
+        
+        setExpireCode(expire);
+        String days = data.getDaysToExpire(sym, x);//problem here...
+        displayNumDays.setText(days);
+        
+        data.getSelectedData_F(sym, x);
+        
+       String last = data.getFuturePrice(contractBox.getSelectedIndex());
+       displayPrice.setText(last);
+    }                                           
+
+    private void refreshActionPerformed(java.awt.event.ActionEvent evt) {                                        
+        
+    }                                       
+
+    private void contractExpiryActionPerformed(java.awt.event.ActionEvent evt) {                                               
+        
+    }                                              
+
+    private void displayContractSpecsActionPerformed(java.awt.event.ActionEvent evt) {                                                     
+       String option = data.getContractSpecs(contractBox.getSelectedItem().toString());
+        int len = option.length();
+       
+        String partOne = data.tradingData.get(0);
+        String partTwo = data.tradingData.get(1);
+        
+        if(len%2 == 0){//if len is perfectly divisible by 2
+            String part_1 = option.substring(0, len/2);
+            String part_2 = option.substring((len+1)/2, len);
+            String combined = part_1 + "\n" + part_2 + "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" 
+                    + partOne + "\n" + partTwo;
+            JOptionPane.showMessageDialog(this, combined, "Contract Specifications", JOptionPane.INFORMATION_MESSAGE);
+        }else{//otherwise it is not
+            String part_1 = option.substring(0, (len+1)/2);
+            String part_2 = option.substring((len+1)/2, len);
+           String combined = part_1 + "\n" + part_2 + "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" 
+                   + partOne + "\n" + partTwo;
+            JOptionPane.showMessageDialog(this, combined, "Contract Specifications", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }                                                    
+
+    private void callOptionActionPerformed(java.awt.event.ActionEvent evt) {                                           
+         String qoute = "A call option is a contract.  It is a term sercurity  insurance policy. \n" + 
+                "It has a expiration date, coverage amount, deductible, and premium cost! \n" + 
+                "One can use these instruments as a strategy to get out of a position.";
+        JOptionPane.showMessageDialog(this, qoute, "What is a Call Option?", JOptionPane.INFORMATION_MESSAGE);
+    }                                          
     /**
      *  get and set the total budget value
-     *  is displayed ongui
+     *  is displayed on gui
      */
     private void getTotalBudget(){
-        BigDecimal sum = sql.getSumTotal();
+        sum = sql.getSumTotal();
         
         if(sum == null){//if sum is null
-            displayTotal.setText("0.0");
+            displayTotal.setText("0.0");        
         }else{//otherwise it is not null
             //1st make sum a formatted US dollar
             displayTotal.setText(getCurrencyDisplay(sum));
@@ -882,67 +868,64 @@ public class CostBurden extends javax.swing.JFrame {
                 }
             }
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(CostBurden.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+            java.util.logging.Logger.getLogger(IncomeSolution.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
-        //</editor-fold>
-        
-        //</editor-fold>
 
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(() -> {
-            CostBurden burden = new CostBurden();
-            burden.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            burden.setLocationRelativeTo(null);
-            burden.setResizable(false);
-            burden.setVisible(true);
+            IncomeSolution solution = new IncomeSolution();
+            solution .setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            solution .setLocationRelativeTo(null);
+           solution .setResizable(false);
+            solution .setVisible(true);
         });
     }
 
-    // Variables declaration - do not modify//GEN-BEGIN:variables
+    // Variables declaration - do not modify                     
     private javax.swing.JButton add;
     private javax.swing.JLabel amount;
     private javax.swing.JTextField amountBox;
-    private javax.swing.JLabel budget;
+    private javax.swing.JButton callOption;
+    private javax.swing.JComboBox<String> contractBox;
+    private javax.swing.JComboBox<String> contractExpiry;
     private javax.swing.JLabel daily;
     private javax.swing.JLabel date;
     private javax.swing.JTextArea dispayTextArea;
     private javax.swing.JTable displayBudget;
-    public static javax.swing.JLabel displayBudgetAmount;
+    private javax.swing.JButton displayContractSpecs;
     private javax.swing.JLabel displayDaily;
     private javax.swing.JLabel displayHourly;
+    private javax.swing.JLabel displayNumDays;
     private javax.swing.JLabel displayNumOfOpps;
+    private javax.swing.JLabel displayPrice;
     private javax.swing.JLabel displayTotal;
     private javax.swing.JLabel displayWeekly;
     private javax.swing.JLabel displayYearly;
-    private javax.swing.JButton enter;
     private javax.swing.JLabel expense;
     private javax.swing.JTextField expenseBox;
-    private javax.swing.JComboBox<String> expenseList;
     private javax.swing.JPanel extPanel;
     private javax.swing.JLabel hourly;
+    private javax.swing.JProgressBar incomeBar;
     private javax.swing.JFrame jFrame1;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JPanel jPanel1;
     private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScroll_TArea;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator2;
-    private javax.swing.JTabbedPane jTabbedPane1;
+    public static javax.swing.JList<String> listBox;
     private javax.swing.JButton more;
-    private javax.swing.JProgressBar needWorking;
     private javax.swing.JLabel notes;
     private javax.swing.JTextField notesBox;
-    private javax.swing.JLabel oppsToday;
     private javax.swing.JButton putOption;
+    private javax.swing.JButton refresh;
     private javax.swing.JButton removeAccount;
-    private javax.swing.JLabel savings;
-    private javax.swing.JProgressBar savingsBar;
-    private javax.swing.JTextField savingsBox;
     private javax.swing.JProgressBar timeScale;
     private javax.swing.JLabel toBeFree;
     private javax.swing.JLabel total;
     private javax.swing.JToggleButton totalRequired;
+    private javax.swing.JProgressBar tradingCapital;
     private javax.swing.JLabel weekly;
     private javax.swing.JLabel yearly;
-    // End of variables declaration//GEN-END:variables
+    // End of variables declaration                   
+
 }
