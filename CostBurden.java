@@ -1,8 +1,13 @@
 
+
+import java.awt.Desktop;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.text.NumberFormat;
@@ -10,24 +15,27 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Locale;
+import javax.swing.DefaultListModel;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import net.proteanit.sql.DbUtils;
 
 /**
+ * A budget program on one side and another side where
+ * we can generate the necessary income to cover the 
+ * cost of living demanded by the budget.
  * @author Philip Matthew Caputo
  */
 public class IncomeSolution extends javax.swing.JFrame {
 
-    SQLData sql;
-    StockFutureData data;
-    boolean isXpanelOpen = false;
-    boolean isFirstPage = false;
-    boolean isTotalReqOn = false;
-   JPanel[] expensePanels = null;
-   BigDecimal sum = null;
-   String x;
+    SQLData sql;//database object
+    StockFutureData data;//barchart.com connections object
+    boolean isXpanelOpen = false;//used to test if a jpanel object is open or not
+    boolean isTotalReqOn = false;//used to test with jtogglebutton
+   BigDecimal sum = null;//bigddecimal object of the sum of the budget amount
+   String x;//string object of the expiration date
+   String days = null;//string object of day count until option expiration
 
     
     /**
@@ -69,9 +77,6 @@ public class IncomeSolution extends javax.swing.JFrame {
                 + "If you are not, then you are losing.";
         dispayTextArea.setText(qoute);
     }
-    
-    //~~~~~~~~~~~~~~~~~~~~`~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     /** 
      *  Sets the jlabel that displays how many rows are in the array
@@ -114,35 +119,6 @@ public class IncomeSolution extends javax.swing.JFrame {
          }return null;
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
-    
-  
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    /**
-     * Returns a string value of the out of the moneyness as a percentage.
-     * @param type string of the type either call or put
-     * @param i what number of the array to get
-     * @return string of correct value
-     */
-    private String getOTMness(String type, int i){
-        String formattedPrice = displayPrice.getText();
-        String p = formattedPrice.substring(1, 5);
-         BigDecimal price = new BigDecimal(p);
-        BigDecimal strikePrice = new BigDecimal(data.strike.get(i));
-        String otm = null;
-                if(type.equalsIgnoreCase("Put")){
-                   //price - strike = + if OTM
-                   otm = price.subtract(strikePrice).divide(price,1,RoundingMode.HALF_UP)
-                           .multiply(new BigDecimal("100")).toString();
-                   return otm;
-                }else{//must be a call
-                    //strike - price = + if OTM
-                    otm = strikePrice.subtract(price).divide(price,1,RoundingMode.HALF_UP)
-                            .multiply(new BigDecimal("100")).toString();
-                    return otm;
-                }
-    }
-    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     /**
      * Builds an instance of the gregorian calendar and then
      * with the parameter you can request the day, month or year
@@ -163,7 +139,6 @@ public class IncomeSolution extends javax.swing.JFrame {
         }return 0;
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
     /**
      * Sets the date label to todays date.
      */
@@ -257,22 +232,15 @@ public class IncomeSolution extends javax.swing.JFrame {
      * Adds the symbols to the combo box.
      */
     private void setSymbols(){
-        
         contractExpiry.setVisible(true);
-             for(int i=0;i<data.name_F.size()-1;i++){
-            contractBox.addItem(data.name_F.get(i)); 
-             }
-        //if()){
-            
-            
-        //}else{//must be stock
-             // for(int i=0;i<data.symbolOnceOnly.size()-1;i++){
-            //contractBox.addItem(data.symbolOnceOnly.get(i));
-            //}
-        //}
+         for(int i=0;i<data.name_F.size()-1;i++){
+        contractBox.addItem(data.name_F.get(i)); 
+         }
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
+    /**
+     * Sets available expiration months in combobox
+     */
     private void setExpirationDates(){
         contractExpiry.removeAllItems();
         String name = contractBox.getSelectedItem().toString();
@@ -283,13 +251,44 @@ public class IncomeSolution extends javax.swing.JFrame {
         }
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    
+    /**
+     * Sets the class variable string object to the expire code 
+     * @param expire string of the expire code "SIH16" for example
+     */
     private void setExpireCode(String expire){
         x = expire.substring(expire.length()-5, expire.length());
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    private void setPrintOut(String printOut){
-        System.out.println(printOut);
+    /**
+     * Sets only the call options in the listbox after rendering them readable
+     */
+    private void setCallOptions(){
+        listBox.removeAll();
+        DefaultListModel dlm = new DefaultListModel();
+        ArrayList<String> calls = data.futureOptions;    
+        displayNumOfOpps.setText(String.valueOf(calls.size()));
+              for(int i=1;i<calls.size()-2;i++){
+                  String[] parts = calls.get(i).split(" ");
+                  String numOfDays = days.substring(days.length()-2, days.length());
+                  
+                  dlm.addElement(numOfDays + " Day "  + parts[3] + " Call @ "  + parts[0] + " = $" + parts[2]);
+            }IncomeSolution.listBox.setModel(dlm);
+    }
+    //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    /**
+     * Sets only the call options in the listbox after rendering them readable
+     */
+    private void setPutOptions(){
+        listBox.removeAll();
+        DefaultListModel dlm = new DefaultListModel();
+        ArrayList<String> puts = data.futureOptions;    
+        displayNumOfOpps.setText(String.valueOf(puts.size()));
+              for(int i=1;i<puts.size()-2;i++){
+                  String[] parts = puts.get(i).split(" ");
+                  String numOfDays = days.substring(days.length()-2, days.length());
+                  
+                  dlm.addElement(numOfDays + " Day "  + parts[3] + " Put @ "  + parts[4] + " = $" + parts[6]);
+            }IncomeSolution.listBox.setModel(dlm);
     }
     //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     /**
@@ -338,7 +337,7 @@ public class IncomeSolution extends javax.swing.JFrame {
         displayPrice = new javax.swing.JLabel();
         jScrollPane2 = new javax.swing.JScrollPane();
         listBox = new javax.swing.JList<>();
-        refresh = new javax.swing.JButton();
+        chart = new javax.swing.JButton();
         contractExpiry = new javax.swing.JComboBox<>();
         displayContractSpecs = new javax.swing.JButton();
         callOption = new javax.swing.JButton();
@@ -415,7 +414,8 @@ public class IncomeSolution extends javax.swing.JFrame {
 
         date.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
 
-        tradingCapital.setToolTipText("Percent of Capital Needed");
+        tradingCapital.setToolTipText("Percent of Trading Capital Needed");
+        tradingCapital.setString("");
         tradingCapital.setStringPainted(true);
 
         putOption.setText("Put Option");
@@ -427,7 +427,8 @@ public class IncomeSolution extends javax.swing.JFrame {
 
         displayNumOfOpps.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
 
-        incomeBar.setToolTipText("Percent of Yearly Income");
+        incomeBar.setToolTipText("Percent of Monthly Budget");
+        incomeBar.setString("");
         incomeBar.setStringPainted(true);
 
         toBeFree.setText("To Be Free!");
@@ -448,12 +449,17 @@ public class IncomeSolution extends javax.swing.JFrame {
         displayPrice.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
 
         listBox.setBackground(new java.awt.Color(204, 204, 204));
+        listBox.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
+            public void valueChanged(javax.swing.event.ListSelectionEvent evt) {
+                listBoxValueChanged(evt);
+            }
+        });
         jScrollPane2.setViewportView(listBox);
 
-        refresh.setText("Refresh");
-        refresh.addActionListener(new java.awt.event.ActionListener() {
+        chart.setText("Chart");
+        chart.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                refreshActionPerformed(evt);
+                chartActionPerformed(evt);
             }
         });
 
@@ -493,7 +499,7 @@ public class IncomeSolution extends javax.swing.JFrame {
                                     .addContainerGap()
                                     .addComponent(toBeFree, javax.swing.GroupLayout.PREFERRED_SIZE, 222, javax.swing.GroupLayout.PREFERRED_SIZE)))
                             .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(refresh))
+                            .addComponent(chart))
                         .addComponent(timeScale, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 341, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addComponent(tradingCapital, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.PREFERRED_SIZE, 341, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGroup(javax.swing.GroupLayout.Alignment.LEADING, extPanelLayout.createSequentialGroup()
@@ -508,7 +514,7 @@ public class IncomeSolution extends javax.swing.JFrame {
                             .addComponent(callOption)))
                     .addGroup(extPanelLayout.createSequentialGroup()
                         .addGap(1, 1, 1)
-                        .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                        .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 347, Short.MAX_VALUE)
                             .addGroup(extPanelLayout.createSequentialGroup()
                                 .addComponent(displayContractSpecs)
@@ -518,9 +524,11 @@ public class IncomeSolution extends javax.swing.JFrame {
                                     .addComponent(displayPrice, javax.swing.GroupLayout.PREFERRED_SIZE, 112, javax.swing.GroupLayout.PREFERRED_SIZE))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                    .addComponent(contractExpiry, 0, 153, Short.MAX_VALUE)
-                                    .addComponent(displayNumDays, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))))
-                .addGap(0, 0, Short.MAX_VALUE))
+                                    .addComponent(displayNumDays, javax.swing.GroupLayout.DEFAULT_SIZE, 153, Short.MAX_VALUE)
+                                    .addGroup(extPanelLayout.createSequentialGroup()
+                                        .addComponent(contractExpiry, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addGap(7, 7, 7)))))))
+                .addGap(0, 0, 0))
         );
         extPanelLayout.setVerticalGroup(
             extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -553,7 +561,7 @@ public class IncomeSolution extends javax.swing.JFrame {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(extPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(totalRequired)
-                    .addComponent(refresh))
+                    .addComponent(chart))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(tradingCapital, javax.swing.GroupLayout.PREFERRED_SIZE, 33, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
@@ -689,7 +697,10 @@ public class IncomeSolution extends javax.swing.JFrame {
 
         pack();
     }// </editor-fold>                        
-
+    /**
+     * Adds the expense, amount, & notes to the database
+     * @param evt  
+     */
     private void addActionPerformed(java.awt.event.ActionEvent evt) {                                    
         String bill = expenseBox.getText();
         BigDecimal cost = new BigDecimal(amountBox.getText());
@@ -716,7 +727,11 @@ public class IncomeSolution extends javax.swing.JFrame {
     private void moreActionPerformed(java.awt.event.ActionEvent evt) {                                     
         setFrameSize();
     }                                    
-
+    /**
+     * Sets the buttons title to the amount required to stop working upon clicking
+     * Checks the isTotalReqOn boolean value to determine choice here
+     * @param evt 
+     */
     private void totalRequiredActionPerformed(java.awt.event.ActionEvent evt) {                                              
        String message = "This is the amount that you need to be able to stop working if \n" 
                + " it is used to sell options as a security insurance business.";
@@ -761,15 +776,29 @@ public class IncomeSolution extends javax.swing.JFrame {
          displayBudget.setModel(DbUtils.resultSetToTableModel(sql.updateTable("Budget")));
          getTotalBudget(); 
     }                                             
-
+    /**
+     * Displays put option definition and then sets only the put options available 
+     * in the listbox
+     * @param evt 
+     */
     private void putOptionActionPerformed(java.awt.event.ActionEvent evt) {                                          
          String qoute = "A put option is a contract.  It is a term sercurity  insurance policy. \n" + 
                 "It has a expiration date, coverage amount, deductible, and premium cost! \n" + 
                 "One could use these instruments as a strategy to get into a position.  Theroetically\n" + 
                  " one could get paid to enter a position if one collected enough premium!";
         JOptionPane.showMessageDialog(this, qoute, "What is a Put Option?", JOptionPane.INFORMATION_MESSAGE);
+        
+        setPutOptions();
     }                                         
-
+    /**
+     * Resets progress bars back to zero reading
+     * Sets expiration dates in combo box
+     * Sets available options in the listbox
+     * Display both the price of the future contract 
+     * and the days remaining until the front month 
+     * contract expires
+     * @param evt 
+     */
     private void contractBoxActionPerformed(java.awt.event.ActionEvent evt) {                                            
         incomeBar.setValue(0);
         tradingCapital.setValue(0);
@@ -779,7 +808,7 @@ public class IncomeSolution extends javax.swing.JFrame {
         String sym = expire.substring(expire.length()-5, expire.length()-3);
         
         setExpireCode(expire);
-        String days = data.getDaysToExpire(sym, x);//problem here...
+        days = data.getDaysToExpire(sym, x);
         displayNumDays.setText(days);
         
         data.getSelectedData_F(sym, x);
@@ -788,14 +817,24 @@ public class IncomeSolution extends javax.swing.JFrame {
        displayPrice.setText(last);
     }                                           
 
-    private void refreshActionPerformed(java.awt.event.ActionEvent evt) {                                        
-        
-    }                                       
+    private void chartActionPerformed(java.awt.event.ActionEvent evt) {                                      
+            if(Desktop.isDesktopSupported()){
+                try {
+                    Desktop.getDesktop().browse(new URI("https://www.tradingview.com/chart/yhZft5oD/"));//gettvCode(){...}
+                } catch (IOException | URISyntaxException ex) {
+                    JOptionPane.showMessageDialog(this, ex);
+                }
+            }
+    }                                     
 
     private void contractExpiryActionPerformed(java.awt.event.ActionEvent evt) {                                               
-        
+       
     }                                              
-
+    /**
+     * Displays a jpanel dialog of the contract specifications
+     * and the recent trading data beneath
+     * @param evt 
+     */
     private void displayContractSpecsActionPerformed(java.awt.event.ActionEvent evt) {                                                     
        String option = data.getContractSpecs(contractBox.getSelectedItem().toString());
         int len = option.length();
@@ -806,26 +845,79 @@ public class IncomeSolution extends javax.swing.JFrame {
         if(len%2 == 0){//if len is perfectly divisible by 2
             String part_1 = option.substring(0, len/2);
             String part_2 = option.substring((len+1)/2, len);
-            String combined = part_1 + "\n" + part_2 + "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" 
+            String combined = part_1 + "\n" + part_2 
+                    + "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" 
                     + partOne + "\n" + partTwo;
             JOptionPane.showMessageDialog(this, combined, "Contract Specifications", JOptionPane.INFORMATION_MESSAGE);
         }else{//otherwise it is not
             String part_1 = option.substring(0, (len+1)/2);
             String part_2 = option.substring((len+1)/2, len);
-           String combined = part_1 + "\n" + part_2 + "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" 
+           String combined = part_1 + "\n" + part_2 
+                   + "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" 
                    + partOne + "\n" + partTwo;
             JOptionPane.showMessageDialog(this, combined, "Contract Specifications", JOptionPane.INFORMATION_MESSAGE);
         }
     }                                                    
-
+    /**
+     * Displays call option definition and then sets only the call options available 
+     * in the listbox
+     * @param evt 
+     */
     private void callOptionActionPerformed(java.awt.event.ActionEvent evt) {                                           
          String qoute = "A call option is a contract.  It is a term sercurity  insurance policy. \n" + 
                 "It has a expiration date, coverage amount, deductible, and premium cost! \n" + 
                 "One can use these instruments as a strategy to get out of a position.";
         JOptionPane.showMessageDialog(this, qoute, "What is a Call Option?", JOptionPane.INFORMATION_MESSAGE);
+        
+        setCallOptions();
     }                                          
+
+    private void listBoxValueChanged(javax.swing.event.ListSelectionEvent evt) {                                     
+        if(!evt.getValueIsAdjusting()){
+                        
+            //Need premium to determine number of contracts necessary
+            String option = listBox.getSelectedValue();
+            if(option == null){
+                // nothing to do here.
+            }else{
+                int n = option.indexOf("$");
+                                
+                String premium = option.substring(n+1, option.length());//amount as decimal... 145
+                String p = premium.replace(",", "");
+                
+                //total monthly expenses divided by premium
+                String expenses = displayTotal.getText().substring(1, displayTotal.getText().length());//2,262
+                String e = expenses.replace(",", "");
+                BigDecimal qouteint = new BigDecimal(e).divide(new BigDecimal(p), 2, RoundingMode.CEILING);
+                int m = (int) Math.ceil(qouteint.doubleValue());//number of contracts needed to cover monthly cost of living
+                
+                //Need margin required to determin percent of trading capital
+                String contractSpecs = data.getContractSpecs(contractBox.getSelectedItem().toString());
+                int len = contractSpecs.length();
+                String part_2 = contractSpecs.substring((len+1)/2, len);
+                int index = part_2.indexOf("/");
+                String marginPart = part_2.substring(index+1, part_2.length());
+                String[] parts = marginPart.split(" ");
+                String mar = parts[0].replace(",", "");
+                BigDecimal margin = new BigDecimal(mar);//amount of margin usually more than required
+                BigDecimal numOfContracts = new BigDecimal(m);//number of contracts needed to cover monthly cost of living
+                BigDecimal needed = margin.multiply(numOfContracts);
+                BigDecimal quoteint = sum.divide(new  BigDecimal(".05"), 2, RoundingMode.HALF_UP);
+                BigDecimal q = needed.divide(quoteint, 2, RoundingMode.CEILING).multiply(new BigDecimal("100"));
+                BigDecimal totalPrem = new BigDecimal(p).multiply(numOfContracts);
+                BigDecimal ratio = totalPrem.divide(new BigDecimal(e), 2, RoundingMode.CEILING)
+                        .multiply(new BigDecimal("100"));
+                
+                //set progress bars
+                tradingCapital.setValue(q.intValue());
+                tradingCapital.setString(q.intValue() + "% = " + getCurrencyDisplay(needed) + " : " + m + " Contracts");
+                incomeBar.setValue(ratio.intValue());
+                incomeBar.setString(ratio.intValue() + "% = " + getCurrencyDisplay(totalPrem));
+            }
+        }
+    }                                    
     /**
-     *  get and set the total budget value
+     *  Get and set the total budget value
      *  is displayed on gui
      */
     private void getTotalBudget(){
@@ -886,6 +978,7 @@ public class IncomeSolution extends javax.swing.JFrame {
     private javax.swing.JLabel amount;
     private javax.swing.JTextField amountBox;
     private javax.swing.JButton callOption;
+    private javax.swing.JButton chart;
     private javax.swing.JComboBox<String> contractBox;
     private javax.swing.JComboBox<String> contractExpiry;
     private javax.swing.JLabel daily;
@@ -917,7 +1010,6 @@ public class IncomeSolution extends javax.swing.JFrame {
     private javax.swing.JLabel notes;
     private javax.swing.JTextField notesBox;
     private javax.swing.JButton putOption;
-    private javax.swing.JButton refresh;
     private javax.swing.JButton removeAccount;
     private javax.swing.JProgressBar timeScale;
     private javax.swing.JLabel toBeFree;
