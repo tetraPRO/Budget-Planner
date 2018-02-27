@@ -12,9 +12,9 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * This clearly was the beginning for me when I
+ * was not aware of the prinicple of seperation of
+ * work into seperate files and classes
  */
 
 /**
